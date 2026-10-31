@@ -4,3 +4,4 @@ opencv-python
 numpy
 pillow
 fonttools
+av>=14,<17

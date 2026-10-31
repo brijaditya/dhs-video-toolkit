@@ -72,7 +72,8 @@ def validate(path: Path) -> dict:
     problems = []
     for i, c in enumerate(data["clips"], 1):
         for f in ("start", "end", "hook", "title", "caption"):
-            if not c.get(f):
+            v = c.get(f)
+            if v is None or v == "" or (f != "start" and not v):
                 problems.append(f"clip {i}: '{f}' is empty")
         if problems and problems[-1].startswith(f"clip {i}"):
             continue
