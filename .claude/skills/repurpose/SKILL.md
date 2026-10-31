@@ -12,6 +12,7 @@ All commands run from the toolkit folder (the one holding CLAUDE.md) with the to
 
 ## Before you start
 1. Client name = lowercase, no spaces (`drsmith`). Video goes in `clients\<name>\raw\`. If the owner gave a path elsewhere, COPY it there (never move or edit the original).
+   **If the owner gave a LINK instead of a file:** `PY S\fetch.py --client drsmith --url "<link>" --name sleep_podcast` saves it in `raw\`. It handles direct links, Dropbox, Google Drive ("anyone with the link") and YouTube/Vimeo/Loom pages (the client's own videos only). In the cloud the website must be in the environment's Allowed domains (the error message says which one to add and how). Google Drive and YouTube downloads are untested; if one fails, ask the owner for the file or a Dropbox/direct link.
 2. If `clients\<name>\brief.md` exists, read it (colors, fonts, platforms). If not, create it from `templates\client-brief-template.md` with what you know.
 3. Topic = short lowercase word(s) from the video's subject (`sleep`, `pricing`). It becomes part of every file name.
 

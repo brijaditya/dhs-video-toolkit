@@ -80,7 +80,7 @@ Use the toolkit's own Python, never the system one:
 
 ## Working in a cloud session (Linux, not the owner's PC)
 - First thing in a new cloud session: if `.venv/bin/python` does not exist, run `bash setup-cloud.sh` (takes a few minutes). It ends with READY. Use `.venv/bin/python` for every script.
-- The owner's video is dragged into the chat or given as a link. Save it in `clients/<name>/raw/`. Nothing under `clients/` is ever committed (it is git-ignored).
+- The owner's video is dragged into the chat or given as a link. Save it in `clients/<name>/raw/` (for a link run `fetch.py --client <name> --url <link>`; see the repurpose skill). Nothing under `clients/` is ever committed (it is git-ignored).
 - The cloud machine is temporary. When clips are finished and PASS `check.py`, send each file to the owner with the file-sending tool (SendUserFile), and say so. Do not wait until the end of the session.
 - If the speech model cannot download, the cause is the cloud network setting. Tell the owner in one line: open the cloud environment settings (menu in the session title bar, then Edit), Network access, and allow `huggingface.co`, `cdn-lfs.huggingface.co`, `cas-bridge.xet.hf.co`, `hf.co`. Then retry.
 - Long videos (1 hour+) are slower in the cloud. Tell the owner it is working, and prefer `--model base` if time is tight.
