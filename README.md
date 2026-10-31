@@ -17,6 +17,7 @@ for TikTok, Reels, Shorts and LinkedIn - run by Claude Code on a Windows PC.
 | `.claude/skills/repurpose/` | The 8-step workflow (SKILL.md + Python scripts) |
 | `.claude/skills/effects/` | 45 video effects (zoom, spotlight, widgets...), copied from Vibha Ramprakash's open-source repo (MIT) |
 | `.claude/agents/video-editor.md` | The DHS video editor agent |
+| `setup-cloud.sh` | Same setup for a Linux cloud session |
 | `check.py` | Checks every export: length, size, fps, codecs, loudness. Prints PASS/FAIL |
 | `selftest.py` | 30-second health test of the whole chain (no client files needed) |
 | `templates/client-brief-template.md` | Copy to `clients\<name>\brief.md` for each client |
@@ -25,5 +26,8 @@ for TikTok, Reels, Shorts and LinkedIn - run by Claude Code on a Windows PC.
 
 ## Folder per client
 `clients\<name>\raw` (originals) - `transcripts` - `clips` (working files + clips.json) - `final` (finished, checked clips) - `brief.md` - `fonts` (optional brand fonts).
+
+## Cloud sessions
+In a Claude Code cloud session run `bash setup-cloud.sh` once (Claude does this by itself, see CLAUDE.md). The cloud network must allow the speech-model website; see CLAUDE.md.
 
 Works on Windows, Mac and Linux (needs Python 3.10+ and FFmpeg on Mac/Linux; run `python -m venv .venv`, install `requirements.txt`).

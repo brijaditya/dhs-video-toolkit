@@ -78,6 +78,13 @@ Use the toolkit's own Python, never the system one:
   Use effects only when the owner asks for them (zoom/lean-in, spotlight, etc.). Render them on a finished export
   into the clip's working folder, show the owner, then replace the final file (same name) and run `check.py` again.
 
+## Working in a cloud session (Linux, not the owner's PC)
+- First thing in a new cloud session: if `.venv/bin/python` does not exist, run `bash setup-cloud.sh` (takes a few minutes). It ends with READY. Use `.venv/bin/python` for every script.
+- The owner's video is dragged into the chat or given as a link. Save it in `clients/<name>/raw/`. Nothing under `clients/` is ever committed (it is git-ignored).
+- The cloud machine is temporary. When clips are finished and PASS `check.py`, send each file to the owner with the file-sending tool (SendUserFile), and say so. Do not wait until the end of the session.
+- If the speech model cannot download, the cause is the cloud network setting. Tell the owner in one line: open the cloud environment settings (menu in the session title bar, then Edit), Network access, and allow `huggingface.co`, `cdn-lfs.huggingface.co`, `cas-bridge.xet.hf.co`, `hf.co`. Then retry.
+- Long videos (1 hour+) are slower in the cloud. Tell the owner it is working, and prefer `--model base` if time is tight.
+
 ## Common failures and fixes (say it in one line)
 - "FFmpeg not found" -> run setup.ps1 again, then reopen the window.
 - "speech model could not load" -> needs internet once to download; connect and retry.
