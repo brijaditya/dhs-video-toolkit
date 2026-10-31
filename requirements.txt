@@ -1,0 +1,6 @@
+faster-whisper
+auto-editor
+opencv-python
+numpy
+pillow
+fonttools

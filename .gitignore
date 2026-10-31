@@ -1,0 +1,21 @@
+# Client work stays on the PC. Never commit it.
+clients/*
+!clients/.gitkeep
+*.mp4
+*.mov
+*.mkv
+*.m4v
+*.avi
+*.webm
+*.wav
+*.mp3
+*.m4a
+*.srt
+# Python / local
+.venv/
+__pycache__/
+*.pyc
+.selftest/
+# Windows / Mac
+Thumbs.db
+.DS_Store
