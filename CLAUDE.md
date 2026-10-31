@@ -73,7 +73,7 @@ Use the toolkit's own Python, never the system one:
 - Scripts: `.claude\skills\repurpose\scripts\` (details in that skill's SKILL.md)
 - Check exports: `.venv\Scripts\python.exe check.py clients\<name>\final`
 - First-time setup or repair: `setup.ps1` (Windows). Quick health test: `.venv\Scripts\python.exe selftest.py`
-- Effects skill (`~\.claude\skills\effects`): on Windows ALWAYS use `.venv\Scripts\python.exe` inside that folder
+- Effects skill (`.claude\skills\effects`, part of this toolkit, 45 effects): on Windows ALWAYS use `.venv\Scripts\python.exe` inside that folder
   wherever its SKILL.md says `.venv/bin/python`, and skip its `setup.sh` (setup.ps1 already did it).
   Use effects only when the owner asks for them (zoom/lean-in, spotlight, etc.). Render them on a finished export
   into the clip's working folder, show the owner, then replace the final file (same name) and run `check.py` again.

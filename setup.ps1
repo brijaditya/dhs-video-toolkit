@@ -101,24 +101,17 @@ try {
 
     # ---------------------------------------------------------------- effects skill
     Step "5/7  Effects skill"
-    $skills = Join-Path $HOME '.claude\skills'
-    $effects = Join-Path $skills 'effects'
-    New-Item -ItemType Directory -Force -Path $skills | Out-Null
-    if (Test-Path (Join-Path $effects '.git')) {
-        Say "Effects skill already downloaded, updating..."
-        & git -C $effects pull --quiet 2>$null
-        if ($LASTEXITCODE -ne 0) { Write-Host "  Could not update it (offline?). Using the copy you already have." -ForegroundColor Yellow }
-    } elseif (Test-Path $effects) {
-        Stop-Setup "The folder $effects exists but is not the effects skill." "Rename or delete that folder, then run setup.ps1 again."
-    } else {
-        Run-Checked "Downloading the effects skill" { & git clone --quiet https://github.com/Vibha-Ramprakash/claude-video-effects $effects }
+    # The effects skill is part of this toolkit (.claude\skills\effects). Its own setup.sh does not work on Windows
+    # (it expects .venv/bin/python), so build its environment the Windows way.
+    $effects = Join-Path $Root '.claude\skills\effects'
+    if (-not (Test-Path (Join-Path $effects 'scripts\fx.py'))) {
+        Stop-Setup "The effects skill files are missing from $effects." "Copy the whole toolkit folder again (it must include .claude\skills\effects), then run setup.ps1."
     }
-    # The skill's own setup.sh looks for .venv/bin/python, which does not exist on Windows. Set it up the Windows way.
     $fxPy = Join-Path $effects '.venv\Scripts\python.exe'
     if (-not (Test-Path $fxPy)) { Run-Checked "Creating the effects environment" { & $py -m venv (Join-Path $effects '.venv') } }
     Run-Checked "Updating pip (effects)" { & $fxPy -m pip install --quiet --upgrade pip }
     Say "Installing the effects packages (mediapipe is large, please wait)..."
-    Run-Checked "Installing the effects packages" { & $fxPy -m pip install --quiet -r (Join-Path $effects 'requirements.txt') }
+    Run-Checked "Installing the effects packages" { & $fxPy -m pip install --quiet -r (Join-Path $effects 'requirements.txt') faster-whisper }
     & $fxPy -c "import mediapipe, cv2, PIL, numpy; print('ok')" | Out-Null
     if ($LASTEXITCODE -ne 0) { Stop-Setup "The effects skill packages did not install correctly." "Delete the folder $effects\.venv and run setup.ps1 again." }
     Say "Effects skill OK (uses $fxPy)"

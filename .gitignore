@@ -19,3 +19,4 @@ __pycache__/
 # Windows / Mac
 Thumbs.db
 .DS_Store
+.claude/skills/effects/.venv/

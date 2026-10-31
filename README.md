@@ -6,7 +6,7 @@ for TikTok, Reels, Shorts and LinkedIn - run by Claude Code on a Windows PC.
 ## Install (once)
 1. Copy this whole folder to `C:\DHS`.
 2. Right-click `setup.ps1` > **Run with PowerShell** (or: `powershell -ExecutionPolicy Bypass -File C:\DHS\setup.ps1`).
-   It installs Git, FFmpeg and Python 3.12 if missing, builds the Python environment, downloads the effects skill,
+   It installs Git, FFmpeg and Python 3.12 if missing, builds the Python environment, sets up the effects skill (45 effects),
    runs a 30-second self-test and ends with **READY** or a clear error.
 3. Open Claude Code in `C:\DHS` and say: *"New client drsmith. Here is the video: ..."*
 
@@ -15,6 +15,7 @@ for TikTok, Reels, Shorts and LinkedIn - run by Claude Code on a Windows PC.
 |---|---|
 | `CLAUDE.md` | The rules Claude Code reads every session (specs, names, folders, style, tone) |
 | `.claude/skills/repurpose/` | The 8-step workflow (SKILL.md + Python scripts) |
+| `.claude/skills/effects/` | 45 video effects (zoom, spotlight, widgets...), copied from Vibha Ramprakash's open-source repo (MIT) |
 | `.claude/agents/video-editor.md` | The DHS video editor agent |
 | `check.py` | Checks every export: length, size, fps, codecs, loudness. Prints PASS/FAIL |
 | `selftest.py` | 30-second health test of the whole chain (no client files needed) |
