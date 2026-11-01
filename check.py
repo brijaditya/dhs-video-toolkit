@@ -18,6 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 MAX_SECONDS = 60.0
+LONG = "--long" in sys.argv   # long videos (full-length uploads): skip the 60-second short-form limit
 SIZES = {(1080, 1920): "9:16", (1080, 1080): "1:1", (1920, 1080): "16:9"}
 TARGET_LUFS, LUFS_TOLERANCE = -14.0, 1.5
 NAME_RE = re.compile(r"^[a-z0-9]+_[a-z0-9]+_clip\d{2}_[a-z0-9]+\.mp4$")
@@ -58,7 +59,7 @@ def check_file(path: Path) -> list:
     a = next((s for s in streams if s.get("codec_type") == "audio"), None)
     rows = []
     dur = float(data.get("format", {}).get("duration") or 0)
-    rows.append(("Length", 0 < dur < MAX_SECONDS, f"{dur:.1f}s"))
+    rows.append(("Length", 0 < dur and (LONG or dur < MAX_SECONDS), f"{dur:.1f}s"))
     if v:
         size = (int(v["width"]), int(v["height"]))
         rows.append(("Size", size in SIZES, f"{size[0]}x{size[1]}"))
@@ -93,7 +94,7 @@ def collect(args: list) -> list:
 
 
 def main() -> int:
-    files = collect(sys.argv[1:])
+    files = collect([a for a in sys.argv[1:] if a != "--long"])
     if not files:
         print("No exported clips found to check.")
         return 1

@@ -67,14 +67,20 @@ def key_flags(words, keys):
 
 
 def main():
+    global MAX_CHARS, MAX_WORDS
     ap = argparse.ArgumentParser()
     ap.add_argument("--words", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--keys", default="", help="comma list of key words/phrases to show in yellow")
     ap.add_argument("--y", type=int, default=1600, help="baseline of the captions (1920 high picture)")
     ap.add_argument("--size", type=int, default=96)
+    ap.add_argument("--res", default="1080x1920", help="picture size, e.g. 1920x1080 for landscape")
+    ap.add_argument("--max-chars", type=int, default=MAX_CHARS)
+    ap.add_argument("--max-words", type=int, default=MAX_WORDS)
     a = ap.parse_args()
 
+    MAX_CHARS, MAX_WORDS = a.max_chars, a.max_words
+    PW, PH = [int(v) for v in a.res.lower().split('x')]
     words = load_words(a.words)
     keys = [k.strip() for k in a.keys.split(",") if k.strip()]
     flags = key_flags(words, keys)
@@ -84,8 +90,8 @@ def main():
 ScriptType: v4.00+
 WrapStyle: 2
 ScaledBorderAndShadow: yes
-PlayResX: 1080
-PlayResY: 1920
+PlayResX: {PW}
+PlayResY: {PH}
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
@@ -124,7 +130,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                 else:
                     parts.append(f"{{\\alpha&H00&\\c{col}\\fscx100\\fscy100}}{txt}")
             text = " ".join(parts)
-            lines.append(f"Dialogue: 2,{fmt(start)},{fmt(end)},Pop,,0,0,0,,{{\\an2\\pos(540,{a.y})}}{text}")
+            lines.append(f"Dialogue: 2,{fmt(start)},{fmt(end)},Pop,,0,0,0,,{{\\an2\\pos({PW // 2},{a.y})}}{text}")
     with open(a.out, "w", encoding="utf-8") as f:
         f.write(head + "\n".join(lines) + "\n")
     print(f"Pop-in captions saved: {a.out} ({len(lines)} steps)")
