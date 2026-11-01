@@ -27,8 +27,14 @@ def load_words(path):
     out = []
     for x in w:
         t = (x.get("word") or x.get("text") or "").strip()
-        if t:
-            out.append({"t": t, "s": float(x["start"]), "e": float(x["end"])})
+        if not t:
+            continue
+        # glue spoken numbers back together: "2" + ".6" -> "2.6", "$700" + ",000" -> "$700,000"
+        if out and re.match(r"^[.,]\d", t) and out[-1]["t"][-1:].isdigit():
+            out[-1]["t"] += t
+            out[-1]["e"] = float(x["end"])
+            continue
+        out.append({"t": t, "s": float(x["start"]), "e": float(x["end"])})
     return out
 
 
