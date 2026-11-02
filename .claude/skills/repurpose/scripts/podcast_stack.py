@@ -107,6 +107,70 @@ Dialogue: 1,{fmt(3.1)},{fmt(D)},Title,,0,0,0,,{{\\pos(540,180)\\fad(350,200)}}{t
     Path(path).write_text(doc, encoding="utf-8")
 
 
+def detect_speakers(video, D):
+    """Who is speaking, from mouth movement: list of ("top"|"bot", start, end). top = left speaker, bot = right speaker."""
+    import cv2
+    import numpy as np
+    HOST, GUEST = (460, 330, 700, 480), (1400, 310, 1640, 460)  # face areas in the 1920x1080 picture
+    cap = cv2.VideoCapture(str(video))
+    fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+    prev, eh, eg = None, [], []
+    while True:
+        ok, f = cap.read()
+        if not ok:
+            break
+        g = cv2.cvtColor(f, cv2.COLOR_BGR2GRAY)
+        h = cv2.resize(g[HOST[1]:HOST[3], HOST[0]:HOST[2]], (48, 30)).astype(np.float32)
+        u = cv2.resize(g[GUEST[1]:GUEST[3], GUEST[0]:GUEST[2]], (48, 30)).astype(np.float32)
+        if prev is not None:
+            eh.append(float(np.abs(h - prev[0]).mean()))
+            eg.append(float(np.abs(u - prev[1]).mean()))
+        prev = (h, u)
+    cap.release()
+    b = max(1, int(fps * 0.2))
+    nb = len(eh) // b
+    if nb < 10:
+        return []
+    H = np.array([np.mean(eh[i * b:(i + 1) * b]) for i in range(nb)])
+    G = np.array([np.mean(eg[i * b:(i + 1) * b]) for i in range(nb)])
+    r = np.log((H / (np.percentile(H, 70) + 1e-6) + 1e-3) / (G / (np.percentile(G, 70) + 1e-6) + 1e-3))
+    sign = np.where(r > 0.15, 1.0, np.where(r < -0.15, -1.0, 0.0))
+    k = 7
+    sm = np.convolve(np.pad(sign, (k // 2, k // 2), mode="edge"), np.ones(k), mode="valid")
+    lab = np.where(sm > 0.5, 1, np.where(sm < -0.5, -1, 0))
+    last = next((int(x) for x in lab if x != 0), 1)
+    out = []
+    for x in lab:
+        if x != 0:
+            last = int(x)
+        out.append(last)
+    segs, st = [], 0
+    for i in range(1, len(out) + 1):
+        if i == len(out) or out[i] != out[st]:
+            segs.append([out[st], st * 0.2, i * 0.2])
+            st = i
+    merged = []
+    for sg in segs:  # keep segments of at least 1 second, so the picture never flickers
+        if merged and (sg[2] - sg[1] < 1.0 or merged[-1][0] == sg[0]):
+            merged[-1][2] = sg[2]
+        else:
+            merged.append(sg)
+    merged[0][1] = 0.0
+    merged[-1][2] = D
+    return [("top" if w > 0 else "bot", a0, b0) for w, a0, b0 in merged]
+
+
+def s_expr(segs, who, fade=0.3):
+    """ffmpeg expression: 1 while `who` is speaking (eased in and out), else 0."""
+    terms = []
+    for i, (w, a0, b0) in enumerate(segs):
+        if w != who:
+            continue
+        a1 = -fade if i == 0 else a0
+        terms.append(f"min(max((t-{a1:.2f})/{fade},0),1)*(1-min(max((t-{b0:.2f})/{fade},0),1))")
+    return "min(1," + "+".join(terms) + ")" if terms else "0"
+
+
 def build_clip(a, c, work):
     n = c["rank"]
     cw = work / f"c{n:02d}"
@@ -130,16 +194,23 @@ def build_clip(a, c, work):
     if not music.exists():
         run([PY, S / "make_music.py", "--secs", f"{T:.2f}", "--out", music, "--seed", n, "--bpm", 90 + (n % 4) * 3])
     banner_pngs(cw, a.brand, a.role, a.handle, a.team)
-    zoom = f"(1+0.06*t/{D:.3f})"
-    def panel(src_label, x, out, logo):
+    segs = detect_speakers(tight, D) if a.focus > 0 else []
+    print(f"Clip {n}: speaker changes found: {len(segs)}", flush=True)
+    St, Sb = (s_expr(segs, "top"), s_expr(segs, "bot")) if segs else ("1", "1")
+    def panel(src_label, x, out, logo, SX):
+        z = f"(1+0.05*t/{D:.3f})*(1+{a.focus}*{SX})"
         return (f"[{src_label}]crop=800:600:{x}:156,{logo},"
-                f"scale=w='trunc(1080*{zoom}/2)*2':h='trunc(810*{zoom}/2)*2':eval=frame,crop=1080:{PANEL_H},setsar=1[{out}]")
+                f"scale=w='trunc(1080*{z}/2)*2':h='trunc(810*{z}/2)*2':eval=frame,"
+                f"crop=1080:{PANEL_H}:(iw-1080)*0.5:(ih-{PANEL_H})*0.38,"
+                f"eq=brightness='-0.11*(1-{SX})':saturation='1-0.35*(1-{SX})':eval=frame,setsar=1[{out}]")
     fc = ";".join([
         "[0:v]split=2[va][vb]",
-        panel("va", a.left, "top", "drawbox=x=620:y=140:w=180:h=115:color=0x0A0B0D:t=fill"),
-        panel("vb", a.right, "bot", "drawbox=x=0:y=140:w=34:h=115:color=0x0A0B0D:t=fill"),
+        panel("va", a.left, "top", "drawbox=x=620:y=140:w=180:h=115:color=0x0A0B0D:t=fill", St),
+        panel("vb", a.right, "bot", "drawbox=x=0:y=140:w=34:h=115:color=0x0A0B0D:t=fill", Sb),
         f"[5:v][top][bot]vstack=inputs=3[stk]",
-        f"[stk]drawbox=x=0:y={HDR_H - 3}:w=1080:h=6:color=0xFFC928:t=fill,drawbox=x=0:y={HDR_H + PANEL_H - 3}:w=1080:h=6:color=0xFFC928:t=fill,"
+        f"[stk]drawbox=x=0:y={HDR_H}:w=1080:h={PANEL_H}:color=0xFFC928@0.95:t=8:enable='gt({St},0.5)',"
+        f"drawbox=x=0:y={HDR_H + PANEL_H}:w=1080:h={PANEL_H}:color=0xFFC928@0.95:t=8:enable='gt({Sb},0.5)',"
+        f"drawbox=x=0:y={HDR_H - 3}:w=1080:h=6:color=0xFFC928:t=fill,drawbox=x=0:y={HDR_H + PANEL_H - 3}:w=1080:h=6:color=0xFFC928:t=fill,"
         f"tpad=stop_mode=clone:stop_duration={BANNER_SECS},"
         f"boxblur=luma_radius=40:luma_power=3:enable='gte(t,{D:.3f})',"
         f"drawbox=x=0:y=0:w=1080:h=1920:color=black@0.62:t=fill:enable='gte(t,{D:.3f})'[base]",
@@ -151,11 +222,11 @@ def build_clip(a, c, work):
         "[o2][s2]overlay=0:0:eof_action=pass,format=yuv420p[v]",
         # audio: voice, ducked music, whoosh at start and at the banner, ding on subscribe
         f"[0:a]apad=pad_dur={BANNER_SECS},asplit=2[voice][sc]",
-        "[1:a]volume=0.50[mus]",
-        "[mus][sc]sidechaincompress=threshold=0.015:ratio=9:attack=15:release=400:makeup=1[duck]",
-        "[2:a]volume=0.55,asplit=2[w1][w2]",
+        f"[1:a]volume={a.music}[mus]",
+        "[mus][sc]sidechaincompress=threshold=0.012:ratio=12:attack=10:release=500:makeup=1[duck]",
+        "[2:a]volume=0.35,asplit=2[w1][w2]",
         f"[w2]adelay={int(D * 1000)}|{int(D * 1000)}[w2d]",
-        f"[3:a]volume=0.5,adelay={int((D + 1.7) * 1000)}|{int((D + 1.7) * 1000)}[dd]",
+        f"[3:a]volume=0.35,adelay={int((D + 1.7) * 1000)}|{int((D + 1.7) * 1000)}[dd]",
         "[voice][duck][w1][w2d][dd]amix=inputs=5:duration=longest:normalize=0,alimiter=limit=0.95[aout]",
     ])
     comp = cw / "composite.mp4"
@@ -178,8 +249,8 @@ def build_clip(a, c, work):
     w_ = [x for x in w_ if not fill.match((x.get("word") or x.get("text") or "").strip())]
     words_clean = cw / "words_clean.json"
     json.dump({"words": w_}, open(words_clean, "w"))
-    run([PY, S / "captions_pop.py", "--words", words_clean, "--out", caps, "--res", "1080x1920", "--y", "1800", "--size", "68",
-         "--max-chars", "17", "--max-words", "3", "--keys", a.keys])
+    run([PY, S / "captions_pop.py", "--words", words_clean, "--out", caps, "--res", "1080x1920", "--y", "1800", "--size", str(a.cap_size),
+         "--max-chars", str(a.cap_chars), "--max-words", "3", "--keys", a.keys])
     header_ass(hdr, D, c["hook"], c["title"], a.brand, a.role)
     print(f"Clip {n}: final export ...", flush=True)
     out = run([PY, S / "export.py", comp, "--client", a.client, "--topic", a.topic, "--clip", n, "--platforms", "reels",
@@ -198,6 +269,10 @@ def main():
     ap.add_argument("--team", default="", help="optional extra line on the end banner, e.g. \"Feely Group | eXp Realty\"")
     ap.add_argument("--left", type=int, default=140, help="x of the left speaker's crop (800x600) in the 1920x1080 source")
     ap.add_argument("--right", type=int, default=1120, help="x of the right speaker's crop")
+    ap.add_argument("--music", type=float, default=0.13, help="music loudness (0 = no music)")
+    ap.add_argument("--focus", type=float, default=0.17, help="zoom on the person speaking (0 = off)")
+    ap.add_argument("--cap-size", type=int, default=88)
+    ap.add_argument("--cap-chars", type=int, default=14)
     ap.add_argument("--keys", default="condo fee,30K,crypto,three months,co-signing,penalty,variable,fixed,prepayment,lowest rate,forever home,rate hold,lawyer,approved,pre-approval")
     a = ap.parse_args()
     base = ROOT / "clients" / a.client / "clips" / a.topic
