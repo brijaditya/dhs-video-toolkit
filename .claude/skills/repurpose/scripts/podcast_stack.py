@@ -45,7 +45,7 @@ def fmt(t):
     return f"{cs // 360000}:{cs // 6000 % 60:02d}:{cs // 100 % 60:02d}.{cs % 100:02d}"
 
 
-def banner_pngs(work, brand, role, handle):
+def banner_pngs(work, brand, role, handle, team=""):
     f = lambda s: ImageFont.truetype(str(FONT), s)
     img = Image.new("RGBA", (1080, 1920), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
@@ -62,6 +62,8 @@ def banner_pngs(work, brand, role, handle):
     center(brand.upper(), 640, 70, WHITE)
     center(role.upper(), 740, 44, YEL)
     center(handle, 820, 52, WHITE)
+    if team:
+        center(team.upper(), 880, 32, (201, 176, 110, 255))
     center("NEW VIDEOS EVERY WEEK", 1170, 30, (159, 179, 200, 255))
     img.save(work / "banner.png")
     for name, label, bg in (("sub1", "SUBSCRIBE", RED), ("sub2", "SUBSCRIBED", (58, 74, 92, 255))):
@@ -111,18 +113,22 @@ def build_clip(a, c, work):
     cut, tight = cw / "cut.mp4", cw / "tight.mp4"
     start, end = float(c["start"]), float(c["end"])
     print(f"Clip {n}: cutting {start:.1f}-{end:.1f}s ...", flush=True)
-    run(["ffmpeg", "-y", "-loglevel", "error", "-ss", start, "-i", a.source, "-t", f"{end - start:.3f}", "-vf", "fps=30",
+    if not cut.exists():
+      run(["ffmpeg", "-y", "-loglevel", "error", "-ss", start, "-i", a.source, "-t", f"{end - start:.3f}", "-vf", "fps=30",
          "-c:v", "libx264", "-preset", "veryfast", "-crf", "14", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", cut])
     print(f"Clip {n}: removing silences ...", flush=True)
-    run([PY, S / "silence.py", cut, tight, "--level", "normal"])
+    if not tight.exists():
+        run([PY, S / "silence.py", cut, tight, "--level", "normal"])
     D = duration(tight)
     T = D + BANNER_SECS
     print(f"Clip {n}: {D:.1f}s of talking, timing the captions ...", flush=True)
     words = cw / "words.json"
-    run([PY, S / "transcribe.py", "--audio-from", tight, "--out", words])
+    if not words.exists():
+        run([PY, S / "transcribe.py", "--audio-from", tight, "--out", words])
     music = cw / "music.wav"
-    run([PY, S / "make_music.py", "--secs", f"{T:.2f}", "--out", music, "--seed", n, "--bpm", 90 + (n % 4) * 3])
-    banner_pngs(cw, a.brand, a.role, a.handle)
+    if not music.exists():
+        run([PY, S / "make_music.py", "--secs", f"{T:.2f}", "--out", music, "--seed", n, "--bpm", 90 + (n % 4) * 3])
+    banner_pngs(cw, a.brand, a.role, a.handle, a.team)
     zoom = f"(1+0.06*t/{D:.3f})"
     def panel(src_label, x, out, logo):
         return (f"[{src_label}]crop=800:600:{x}:156,{logo},"
@@ -181,6 +187,7 @@ def main():
     ap.add_argument("--brand", default="Dean Marjanovic")
     ap.add_argument("--role", default="Ottawa REALTOR")
     ap.add_argument("--handle", default="@the613realtor")
+    ap.add_argument("--team", default="", help="optional extra line on the end banner, e.g. \"Feely Group | eXp Realty\"")
     ap.add_argument("--left", type=int, default=140, help="x of the left speaker's crop (800x600) in the 1920x1080 source")
     ap.add_argument("--right", type=int, default=1120, help="x of the right speaker's crop")
     ap.add_argument("--keys", default="condo fee,30K,crypto,three months,co-signing,penalty,variable,fixed,prepayment,lowest rate,forever home,rate hold,lawyer,approved,pre-approval")
