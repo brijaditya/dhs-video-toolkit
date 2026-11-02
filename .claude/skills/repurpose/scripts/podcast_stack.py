@@ -26,7 +26,8 @@ S = ROOT / ".claude" / "skills" / "repurpose" / "scripts"
 FONT = ROOT / "assets" / "fonts" / "Montserrat-ExtraBold.ttf"
 YEL, WHITE, NAVY, RED = (255, 201, 40, 255), (255, 255, 255, 255), (20, 32, 46, 245), (229, 72, 77, 255)
 BANNER_SECS = 3.6
-HDR_H, PANEL_H = 300, 810
+HDR_H, PANEL_H = 420, 750
+ANTON = ROOT / "assets" / "fonts" / "Anton-Regular.ttf"
 
 
 def run(cmd, **kw):
@@ -64,7 +65,7 @@ def banner_pngs(work, brand, role, handle, team=""):
     center(role.upper(), 740, 44, YEL)
     center(handle, 820, 52, WHITE)
     if team:
-        center(team.upper(), 880, 32, (201, 176, 110, 255))
+        center(team.upper(), 894, 32, (201, 176, 110, 255))
     center("NEW VIDEOS EVERY WEEK", 1170, 30, (159, 179, 200, 255))
     img.save(work / "banner.png")
     for name, label, bg in (("sub1", "SUBSCRIBE", RED), ("sub2", "SUBSCRIBED", (58, 74, 92, 255))):
@@ -81,7 +82,60 @@ def banner_pngs(work, brand, role, handle, team=""):
         im.save(work / f"{name}.png")
 
 
+def fit_lines(text, max_w, max_h, max_size, min_size):
+    """Biggest Anton size at which the text fits the box; returns (size, lines)."""
+    words = text.upper().split()
+    lines = []
+    for size in range(max_size, min_size - 1, -2):
+        font = ImageFont.truetype(str(ANTON), size)
+        lines, cur = [], ""
+        for w in words:
+            t = (cur + " " + w).strip()
+            if font.getlength(t) <= max_w:
+                cur = t
+            else:
+                if cur:
+                    lines.append(cur)
+                cur = w
+        if cur:
+            lines.append(cur)
+        if len(lines) * size * 1.22 <= max_h and all(font.getlength(l) <= max_w for l in lines):
+            return size, lines
+    return min_size, lines
+
+
 def header_ass(path, D, hook, title, brand, role):
+    hs, hl = fit_lines(hook, 980, 290, 120, 56)
+    ts, tl = fit_lines(title, 980, 290, 130, 56)
+    hook_l, title_l = r"\N".join(hl), r"\N".join(tl)
+    asc, desc = ImageFont.truetype(str(ANTON), 100).getmetrics()
+    k = (asc + desc) / 100.0   # the subtitle renderer sizes by line height, so scale up to get the size we measured
+    hs, ts = int(hs * k), int(ts * k)
+    tag = f"{brand.upper()}  |  {role.upper()}"
+    cy = HDR_H // 2 + 28
+    doc = f"""[Script Info]
+ScriptType: v4.00+
+WrapStyle: 2
+ScaledBorderAndShadow: yes
+PlayResX: 1080
+PlayResY: 1920
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Tag,Montserrat ExtraBold,40,&H0028C9FF,&H0028C9FF,&H00000000,&H00000000,0,0,0,0,100,100,3,0,1,0,0,5,0,0,0,1
+Style: Hook,Anton,{hs},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,1,0,1,0,0,5,0,0,0,1
+Style: Title,Anton,{ts},&H0028C9FF,&H0028C9FF,&H00000000,&H00000000,0,0,0,0,100,100,1,0,1,0,0,5,0,0,0,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,{fmt(0)},{fmt(D)},Tag,,0,0,0,,{{\\pos(540,56)\\fad(300,200)}}{tag}
+Dialogue: 1,{fmt(0)},{fmt(3.0)},Hook,,0,0,0,,{{\\pos(540,{cy})\\fscx55\\fscy55\\t(0,180,\\fscx110\\fscy110)\\t(180,320,\\fscx100\\fscy100)\\fad(0,250)}}{hook_l}
+Dialogue: 1,{fmt(3.1)},{fmt(D)},Title,,0,0,0,,{{\\pos(540,{cy})\\fad(350,200)}}{title_l}
+"""
+    Path(path).write_text(doc, encoding="utf-8")
+
+
+def header_ass_old(path, D, hook, title, brand, role):
     hook_l = r"\N".join(textwrap.wrap(hook.upper(), 23))
     title_l = r"\N".join(textwrap.wrap(title.upper(), 21))
     tag = f"{brand.upper()}  |  {role.upper()}"
@@ -178,20 +232,20 @@ def build_clip(a, c, work):
     cut, tight = cw / "cut.mp4", cw / "tight.mp4"
     start, end = float(c["start"]), float(c["end"])
     print(f"Clip {n}: cutting {start:.1f}-{end:.1f}s ...", flush=True)
-    if not cut.exists():
+    if a.fresh or not cut.exists():
       run(["ffmpeg", "-y", "-loglevel", "error", "-ss", start, "-i", a.source, "-t", f"{end - start:.3f}", "-vf", "fps=30",
          "-c:v", "libx264", "-preset", "veryfast", "-crf", "14", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", cut])
     print(f"Clip {n}: removing silences ...", flush=True)
-    if not tight.exists():
+    if a.fresh or not tight.exists():
         run([PY, S / "silence.py", cut, tight, "--level", "normal"])
     D = duration(tight)
     T = D + BANNER_SECS
     print(f"Clip {n}: {D:.1f}s of talking, timing the captions ...", flush=True)
     words = cw / "words.json"
-    if not words.exists():
+    if a.fresh or not words.exists():
         run([PY, S / "transcribe.py", "--audio-from", tight, "--out", words])
     music = cw / "music.wav"
-    if not music.exists():
+    if a.fresh or not music.exists():
         run([PY, S / "make_music.py", "--secs", f"{T:.2f}", "--out", music, "--seed", n, "--bpm", 90 + (n % 4) * 3])
     banner_pngs(cw, a.brand, a.role, a.handle, a.team)
     segs = detect_speakers(tight, D) if a.focus > 0 else []
@@ -224,9 +278,9 @@ def build_clip(a, c, work):
         f"[0:a]apad=pad_dur={BANNER_SECS},asplit=2[voice][sc]",
         f"[1:a]volume={a.music}[mus]",
         "[mus][sc]sidechaincompress=threshold=0.012:ratio=12:attack=10:release=500:makeup=1[duck]",
-        "[2:a]volume=0.35,asplit=2[w1][w2]",
+        "[2:a]volume=0.25,asplit=2[w1][w2]",
         f"[w2]adelay={int(D * 1000)}|{int(D * 1000)}[w2d]",
-        f"[3:a]volume=0.35,adelay={int((D + 1.7) * 1000)}|{int((D + 1.7) * 1000)}[dd]",
+        f"[3:a]volume=0.25,adelay={int((D + 1.7) * 1000)}|{int((D + 1.7) * 1000)}[dd]",
         "[voice][duck][w1][w2d][dd]amix=inputs=5:duration=longest:normalize=0,alimiter=limit=0.95[aout]",
     ])
     comp = cw / "composite.mp4"
@@ -269,8 +323,9 @@ def main():
     ap.add_argument("--team", default="", help="optional extra line on the end banner, e.g. \"Feely Group | eXp Realty\"")
     ap.add_argument("--left", type=int, default=140, help="x of the left speaker's crop (800x600) in the 1920x1080 source")
     ap.add_argument("--right", type=int, default=1120, help="x of the right speaker's crop")
-    ap.add_argument("--music", type=float, default=0.13, help="music loudness (0 = no music)")
-    ap.add_argument("--focus", type=float, default=0.17, help="zoom on the person speaking (0 = off)")
+    ap.add_argument("--music", type=float, default=0.0, help="music loudness (0 = no music)")
+    ap.add_argument("--focus", type=float, default=0.30, help="zoom on the person speaking (0 = off)")
+    ap.add_argument("--fresh", action="store_true", help="ignore saved cuts, captions and music; start the clip over")
     ap.add_argument("--cap-size", type=int, default=88)
     ap.add_argument("--cap-chars", type=int, default=14)
     ap.add_argument("--keys", default="condo fee,30K,crypto,three months,co-signing,penalty,variable,fixed,prepayment,lowest rate,forever home,rate hold,lawyer,approved,pre-approval")
