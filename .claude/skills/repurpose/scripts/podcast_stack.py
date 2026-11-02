@@ -79,8 +79,8 @@ def banner_pngs(work, brand, role, handle):
 
 
 def header_ass(path, D, hook, title, brand, role):
-    hook_l = r"\N".join(textwrap.wrap(hook.upper(), 26))
-    title_l = r"\N".join(textwrap.wrap(title.upper(), 24))
+    hook_l = r"\N".join(textwrap.wrap(hook.upper(), 23))
+    title_l = r"\N".join(textwrap.wrap(title.upper(), 21))
     tag = f"{brand.upper()}  |  {role.upper()}"
     doc = f"""[Script Info]
 ScriptType: v4.00+
@@ -91,15 +91,15 @@ PlayResY: 1920
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Tag,Montserrat ExtraBold,30,&H0028C9FF,&H0028C9FF,&H00000000,&H00000000,0,0,0,0,100,100,3,0,1,0,0,5,0,0,0,1
-Style: Hook,Montserrat ExtraBold,56,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,1,0,1,0,0,5,0,0,0,1
-Style: Title,Montserrat ExtraBold,48,&H0028C9FF,&H0028C9FF,&H00000000,&H00000000,0,0,0,0,100,100,1,0,1,0,0,5,0,0,0,1
+Style: Tag,Montserrat ExtraBold,34,&H0028C9FF,&H0028C9FF,&H00000000,&H00000000,0,0,0,0,100,100,3,0,1,0,0,5,0,0,0,1
+Style: Hook,Montserrat ExtraBold,64,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,1,0,1,0,0,5,0,0,0,1
+Style: Title,Montserrat ExtraBold,58,&H0028C9FF,&H0028C9FF,&H00000000,&H00000000,0,0,0,0,100,100,1,0,1,0,0,5,0,0,0,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-Dialogue: 0,{fmt(0)},{fmt(D)},Tag,,0,0,0,,{{\\pos(540,50)\\fad(300,200)}}{tag}
-Dialogue: 1,{fmt(0)},{fmt(3.0)},Hook,,0,0,0,,{{\\pos(540,185)\\fscx55\\fscy55\\t(0,180,\\fscx110\\fscy110)\\t(180,320,\\fscx100\\fscy100)\\fad(0,250)}}{hook_l}
-Dialogue: 1,{fmt(3.1)},{fmt(D)},Title,,0,0,0,,{{\\pos(540,185)\\fad(350,200)}}{title_l}
+Dialogue: 0,{fmt(0)},{fmt(D)},Tag,,0,0,0,,{{\\pos(540,46)\\fad(300,200)}}{tag}
+Dialogue: 1,{fmt(0)},{fmt(3.0)},Hook,,0,0,0,,{{\\pos(540,180)\\fscx55\\fscy55\\t(0,180,\\fscx110\\fscy110)\\t(180,320,\\fscx100\\fscy100)\\fad(0,250)}}{hook_l}
+Dialogue: 1,{fmt(3.1)},{fmt(D)},Title,,0,0,0,,{{\\pos(540,180)\\fad(350,200)}}{title_l}
 """
     Path(path).write_text(doc, encoding="utf-8")
 
@@ -124,13 +124,13 @@ def build_clip(a, c, work):
     run([PY, S / "make_music.py", "--secs", f"{T:.2f}", "--out", music, "--seed", n, "--bpm", 90 + (n % 4) * 3])
     banner_pngs(cw, a.brand, a.role, a.handle)
     zoom = f"(1+0.06*t/{D:.3f})"
-    def panel(src_label, x, out):
-        return (f"[{src_label}]crop=800:600:{x}:156,"
+    def panel(src_label, x, out, logo):
+        return (f"[{src_label}]crop=800:600:{x}:156,{logo},"
                 f"scale=w='trunc(1080*{zoom}/2)*2':h='trunc(810*{zoom}/2)*2':eval=frame,crop=1080:{PANEL_H},setsar=1[{out}]")
     fc = ";".join([
         "[0:v]split=2[va][vb]",
-        panel("va", a.left, "top"),
-        panel("vb", a.right, "bot"),
+        panel("va", a.left, "top", "drawbox=x=620:y=140:w=180:h=115:color=0x0A0B0D:t=fill"),
+        panel("vb", a.right, "bot", "drawbox=x=0:y=140:w=34:h=115:color=0x0A0B0D:t=fill"),
         f"[5:v][top][bot]vstack=inputs=3[stk]",
         f"[stk]drawbox=x=0:y={HDR_H - 3}:w=1080:h=6:color=0xFFC928:t=fill,drawbox=x=0:y={HDR_H + PANEL_H - 3}:w=1080:h=6:color=0xFFC928:t=fill,"
         f"tpad=stop_mode=clone:stop_duration={BANNER_SECS},"
