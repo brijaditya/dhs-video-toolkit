@@ -12,6 +12,7 @@ Layout assumes a wide two-shot (host left, guest right). Adjust --left/--right c
 """
 import argparse
 import json
+import re
 import subprocess
 import sys
 import textwrap
@@ -170,7 +171,14 @@ def build_clip(a, c, work):
          "-c:v", "libx264", "-preset", "veryfast", "-crf", "16", "-pix_fmt", "yuv420p", "-r", "30",
          "-c:a", "aac", "-b:a", "192k", "-ar", "48000", comp])
     caps, hdr = cw / "captions.ass", cw / "header.ass"
-    run([PY, S / "captions_pop.py", "--words", words, "--out", caps, "--res", "1080x1920", "--y", "1800", "--size", "68",
+    # captions without filler words (um, uh, hmm)
+    d_ = json.load(open(words))
+    w_ = d_["words"] if isinstance(d_, dict) else d_
+    fill = re.compile(r"^(u+m+|u+h+|e+r+m*|hm+|mm+)[,.!?]*$", re.I)
+    w_ = [x for x in w_ if not fill.match((x.get("word") or x.get("text") or "").strip())]
+    words_clean = cw / "words_clean.json"
+    json.dump({"words": w_}, open(words_clean, "w"))
+    run([PY, S / "captions_pop.py", "--words", words_clean, "--out", caps, "--res", "1080x1920", "--y", "1800", "--size", "68",
          "--max-chars", "17", "--max-words", "3", "--keys", a.keys])
     header_ass(hdr, D, c["hook"], c["title"], a.brand, a.role)
     print(f"Clip {n}: final export ...", flush=True)
